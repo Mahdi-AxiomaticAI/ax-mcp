@@ -15,12 +15,8 @@ from fastmcp import FastMCP
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
-from .DT.multimode_ring_jax import (
-    MultiModeRingParams,
-    ModeParams,
-    compute_multimode_response,
-)
-from .DT.mzi_filter_jax import evaluate_mzi_filter_jax
+# Note: JAX-heavy modules are imported lazily inside tool bodies to ensure
+# the server can register tools even if optional dependencies are missing.
 
 
 def _ensure_output_dir() -> str:
@@ -38,6 +34,10 @@ mcp = FastMCP(
         "TOOLS:\n"
         "- simulate_multimode_ring: compute wavelength vs transmission (linear and dB).\n"
         "- simulate_mzi_filter: compute 8-channel CWDM filter transmissions.\n"
+        "- simulate_mzi_filter_5c: compute a single 5-coupler MZI cascade (top/bottom).\n"
+        "- simulate_mzi_stage1: compute only stage 1 MZI transmission (top/bottom).\n"
+        "- simulate_mzi_stage2: compute only stage 2 MZI transmission (top/bottom).\n"
+        "- simulate_mzi_stage3: compute only stage 3 MZI transmission (top/bottom).\n"
         "- list_available_models: discover available models and parameters.\n\n"
         "USAGE NOTES:\n"
         "- Wavelength sweep is specified in nanometers via lam_start_nm/lam_stop_nm/num_points.\n"
@@ -109,6 +109,11 @@ async def simulate_multimode_ring(
 ) -> ToolResult:
     """Run the multimode ring simulation and save results as CSV."""
     try:
+        from .DT.multimode_ring_jax import (
+            MultiModeRingParams,
+            ModeParams,
+            compute_multimode_response,
+        )
         params = MultiModeRingParams(
             lam_start_nm=lam_start_nm,
             lam_stop_nm=lam_stop_nm,
@@ -171,6 +176,79 @@ async def simulate_multimode_ring(
 
 
 @mcp.tool(
+    name="simulate_mzi_filter_5c",
+    description=(
+        "Simulate a single 5-coupler MZI cascade based on stage 3 pattern. "
+        "Saves CSV with columns: wavelength_nm, T_top, T_bottom."
+    ),
+    tags=["simulation", "photonic", "mzi", "filter", "jax"],
+)
+async def simulate_mzi_filter_5c(
+    lam_start_nm: Annotated[float, "Starting wavelength in nm"] = 1270.0,
+    lam_stop_nm: Annotated[float, "Ending wavelength in nm"] = 1310.0,
+    num_points: Annotated[int, "Number of points in the sweep"] = 4001,
+    lambda0: Annotated[float, "Central wavelength (m)"] = 1290e-9,
+    delta_lambda: Annotated[float, "Channel spacing (m)"] = 4.4e-9,
+    n0: Annotated[float, "Waveguide n0"] = 2.39,
+    n1: Annotated[float, "Waveguide n1"] = -1.5e7,
+    n2: Annotated[float, "Waveguide n2"] = 1.2e13,
+    kappa_c1: Annotated[float, "Coupler 1 nominal kappa (leftmost)"] = 0.50,
+    kappa_c1_slope: Annotated[float, "Slope for kappa_c1 vs wavelength"] = 0.0,
+    kappa_c2: Annotated[float, "Coupler 2 nominal kappa"] = 0.13,
+    kappa_c2_slope: Annotated[float, "Slope for kappa_c2 vs wavelength"] = 0.0,
+    kappa_c3: Annotated[float, "Coupler 3 nominal kappa"] = 0.12,
+    kappa_c3_slope: Annotated[float, "Slope for kappa_c3 vs wavelength"] = 0.0,
+    kappa_c4: Annotated[float, "Coupler 4 nominal kappa"] = 0.50,
+    kappa_c4_slope: Annotated[float, "Slope for kappa_c4 vs wavelength"] = 0.0,
+    kappa_c5: Annotated[float, "Coupler 5 nominal kappa (rightmost)"] = 0.25,
+    kappa_c5_slope: Annotated[float, "Slope for kappa_c5 vs wavelength"] = 0.0,
+    input_port: Annotated[int, "Input port (1=top, 2=bottom)"] = 1,
+    output_filename: Annotated[str, "CSV filename (saved to mcp_output)"] = "mzi_5c_transmission.csv",
+) -> ToolResult:
+    try:
+        import jax.numpy as jnp
+        from .DT.mzi_filter_5c_jax import evaluate_mzi_filter_5c_jax
+
+        wl_nm = jnp.linspace(lam_start_nm, lam_stop_nm, num_points)
+        wl_m = wl_nm * 1e-9
+
+        T_top, T_bottom = evaluate_mzi_filter_5c_jax(
+            wl_m,
+            lambda0=lambda0,
+            delta_lambda=delta_lambda,
+            n0=n0, n1=n1, n2=n2,
+            kappa_c1=kappa_c1, kappa_c1_slope=kappa_c1_slope,
+            kappa_c2=kappa_c2, kappa_c2_slope=kappa_c2_slope,
+            kappa_c3=kappa_c3, kappa_c3_slope=kappa_c3_slope,
+            kappa_c4=kappa_c4, kappa_c4_slope=kappa_c4_slope,
+            kappa_c5=kappa_c5, kappa_c5_slope=kappa_c5_slope,
+            input_port=input_port,
+        )
+
+        out_dir = _ensure_output_dir()
+        out_path = os.path.join(out_dir, output_filename)
+
+        with open(out_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["wavelength_nm", "T_top", "T_bottom"])
+            wl_list = wl_nm.tolist()
+            t_top = T_top.tolist()
+            t_bot = T_bottom.tolist()
+            for idx in range(len(wl_list)):
+                writer.writerow([float(wl_list[idx]), float(t_top[idx]), float(t_bot[idx])])
+
+        summary = (
+            f"5-coupler MZI simulation completed. Saved CSV to: {out_path}\n"
+            f"Points: {len(wl_nm.tolist())}; Wavelength range: {float(wl_nm[0]):.3f}–{float(wl_nm[-1]):.3f} nm"
+        )
+        return ToolResult(
+            content=[TextContent(type="text", text=summary)],
+            structured_content={"output_path": out_path},
+        )
+
+    except Exception as e:
+        return ToolResult(content=[TextContent(type="text", text=f"Simulation failed: {e!s}")])
+@mcp.tool(
     name="simulate_mzi_filter",
     description=(
         "Simulate an 8-channel CWDM MZI filter and save CSV with columns: "
@@ -212,6 +290,7 @@ async def simulate_mzi_filter(
     """Run the MZI filter simulation and save results as CSV."""
     try:
         import jax.numpy as jnp
+        from .DT.mzi_filter_jax import evaluate_mzi_filter_jax
 
         wl_nm = jnp.linspace(lam_start_nm, lam_stop_nm, num_points)
         wl_m = wl_nm * 1e-9
@@ -259,6 +338,180 @@ async def simulate_mzi_filter(
 
 
 @mcp.tool(
+    name="simulate_mzi_stage3",
+    description="Simulate only stage 3 of the MZI filter with default parameters. Saves CSV with columns: wavelength_nm, T_top, T_bottom.",
+    tags=["simulation", "mzi", "stage3"],
+)
+async def simulate_mzi_stage3(
+    lam_start_nm: Annotated[float, "Starting wavelength in nm"] = 1270,
+    lam_stop_nm: Annotated[float, "Ending wavelength in nm"] = 1310,
+    num_points: Annotated[int, "Number of points in the sweep"] = 4001,
+    lambda0: Annotated[float, "Central wavelength (m)"] = 1.29e-6,
+    delta_lambda: Annotated[float, "Channel spacing (m)"] = 4.4e-9,
+    n0: Annotated[float, "Waveguide n0"] = 2.39,
+    n1: Annotated[float, "Waveguide n1"] = -1.5e7,
+    n2: Annotated[float, "Waveguide n2"] = 1.2e13,
+    kappa_05: Annotated[float, "50% coupler nominal kappa"] = 0.5,
+    kappa_05_slope: Annotated[float, "Slope for kappa_05 vs wavelength"] = 0.0,
+    kappa_02: Annotated[float, "20% coupler nominal kappa"] = 0.2,
+    kappa_02_slope: Annotated[float, "Slope for kappa_02 vs wavelength"] = 0.0,
+    kappa_004: Annotated[float, "4% coupler nominal kappa"] = 0.04,
+    kappa_004_slope: Annotated[float, "Slope for kappa_004 vs wavelength"] = 0.0,
+    input_port: Annotated[int, "Input port (1=top, 2=bottom)"] = 1,
+    output_filename: Annotated[str, "CSV filename (saved to mcp_output)"] = "mzi_stage3_transmission.csv",
+) -> ToolResult:
+    try:
+        import numpy as np
+        from .DT.mzi_stage3_jax import evaluate_mzi_stage3_jax
+
+        out_dir = _ensure_output_dir()
+        out_path = os.path.join(out_dir, output_filename)
+
+        wavelengths_nm = np.linspace(lam_start_nm, lam_stop_nm, num_points)
+        wavelengths_m = wavelengths_nm * 1e-9
+
+        T_top, T_bottom = evaluate_mzi_stage3_jax(
+            wavelengths_m, lambda0, delta_lambda, n0, n1, n2,
+            kappa_05, kappa_05_slope, kappa_02, kappa_02_slope,
+            kappa_004, kappa_004_slope, input_port
+        )
+
+        with open(out_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["wavelength_nm", "T_top", "T_bottom"])
+            for i in range(len(wavelengths_nm)):
+                writer.writerow([wavelengths_nm[i], float(T_top[i]), float(T_bottom[i])])
+
+        return ToolResult(
+            content=[
+                TextContent(
+                    type="text",
+                    text=f"Stage 3 MZI simulation completed. Saved CSV to: {out_path}\n"
+                         f"Points: {num_points}; Wavelength range: {lam_start_nm:.3f}–{lam_stop_nm:.3f} nm"
+                )
+            ],
+            structured_content={"output_path": out_path},
+        )
+
+    except Exception as e:
+        return ToolResult(content=[TextContent(type="text", text=f"Simulation failed: {e!s}")])
+
+
+@mcp.tool(
+    name="simulate_mzi_stage1",
+    description="Simulate only stage 1 of the MZI filter. Saves CSV with columns: wavelength_nm, T_top, T_bottom.",
+    tags=["simulation", "mzi", "stage1"],
+)
+async def simulate_mzi_stage1(
+    lam_start_nm: Annotated[float, "Starting wavelength in nm"] = 1270,
+    lam_stop_nm: Annotated[float, "Ending wavelength in nm"] = 1310,
+    num_points: Annotated[int, "Number of points in the sweep"] = 4001,
+    lambda0: Annotated[float, "Central wavelength (m)"] = 1.29e-6,
+    delta_lambda: Annotated[float, "Channel spacing (m)"] = 4.4e-9,
+    n0: Annotated[float, "Waveguide n0"] = 2.39,
+    n1: Annotated[float, "Waveguide n1"] = -1.5e7,
+    n2: Annotated[float, "Waveguide n2"] = 1.2e13,
+    kappa_05: Annotated[float, "50% coupler nominal kappa"] = 0.5,
+    kappa_05_slope: Annotated[float, "Slope for kappa_05 vs wavelength"] = 0.0,
+    input_port: Annotated[int, "Input port (1=top, 2=bottom)"] = 1,
+    delta_Loff: Annotated[float, "Additional ΔL offset (m)"] = 0.0,
+    output_filename: Annotated[str, "CSV filename (saved to mcp_output)"] = "mzi_stage1_transmission.csv",
+) -> ToolResult:
+    try:
+        import numpy as np
+        from .DT.mzi_stage1_jax import evaluate_mzi_stage1_jax
+
+        out_dir = _ensure_output_dir()
+        out_path = os.path.join(out_dir, output_filename)
+
+        wavelengths_nm = np.linspace(lam_start_nm, lam_stop_nm, num_points)
+        wavelengths_m = wavelengths_nm * 1e-9
+
+        T_top, T_bottom = evaluate_mzi_stage1_jax(
+            wavelengths_m,
+            lambda0=lambda0,
+            delta_lambda=delta_lambda,
+            n0=n0, n1=n1, n2=n2,
+            kappa_05=kappa_05, kappa_05_slope=kappa_05_slope,
+            input_port=input_port,
+            delta_Loff=delta_Loff,
+        )
+
+        with open(out_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["wavelength_nm", "T_top", "T_bottom"])
+            for i in range(len(wavelengths_nm)):
+                writer.writerow([wavelengths_nm[i], float(T_top[i]), float(T_bottom[i])])
+
+        return ToolResult(
+            content=[TextContent(type="text", text=f"Stage 1 MZI simulation completed. Saved CSV to: {out_path}")],
+            structured_content={"output_path": out_path},
+        )
+
+    except Exception as e:
+        return ToolResult(content=[TextContent(type="text", text=f"Simulation failed: {e!s}")])
+
+
+@mcp.tool(
+    name="simulate_mzi_stage2",
+    description="Simulate only stage 2 of the MZI filter. Saves CSV with columns: wavelength_nm, T_top, T_bottom.",
+    tags=["simulation", "mzi", "stage2"],
+)
+async def simulate_mzi_stage2(
+    lam_start_nm: Annotated[float, "Starting wavelength in nm"] = 1270,
+    lam_stop_nm: Annotated[float, "Ending wavelength in nm"] = 1310,
+    num_points: Annotated[int, "Number of points in the sweep"] = 4001,
+    lambda0: Annotated[float, "Central wavelength (m)"] = 1.29e-6,
+    delta_lambda: Annotated[float, "Channel spacing (m)"] = 4.4e-9,
+    n0: Annotated[float, "Waveguide n0"] = 2.39,
+    n1: Annotated[float, "Waveguide n1"] = -1.5e7,
+    n2: Annotated[float, "Waveguide n2"] = 1.2e13,
+    kappa_05: Annotated[float, "50% coupler nominal kappa"] = 0.5,
+    kappa_05_slope: Annotated[float, "Slope for kappa_05 vs wavelength"] = 0.0,
+    kappa_029: Annotated[float, "29% coupler nominal kappa"] = 0.29,
+    kappa_029_slope: Annotated[float, "Slope for kappa_029 vs wavelength"] = 0.0,
+    kappa_008: Annotated[float, "8% coupler nominal kappa"] = 0.08,
+    kappa_008_slope: Annotated[float, "Slope for kappa_008 vs wavelength"] = 0.0,
+    input_port: Annotated[int, "Input port (1=top, 2=bottom)"] = 1,
+    delta_Loff: Annotated[float, "Additional ΔL offset (m)"] = 0.0,
+    output_filename: Annotated[str, "CSV filename (saved to mcp_output)"] = "mzi_stage2_transmission.csv",
+) -> ToolResult:
+    try:
+        import numpy as np
+        from .DT.mzi_stage2_jax import evaluate_mzi_stage2_jax
+
+        out_dir = _ensure_output_dir()
+        out_path = os.path.join(out_dir, output_filename)
+
+        wavelengths_nm = np.linspace(lam_start_nm, lam_stop_nm, num_points)
+        wavelengths_m = wavelengths_nm * 1e-9
+
+        T_top, T_bottom = evaluate_mzi_stage2_jax(
+            wavelengths_m,
+            lambda0=lambda0,
+            delta_lambda=delta_lambda,
+            n0=n0, n1=n1, n2=n2,
+            kappa_05=kappa_05, kappa_05_slope=kappa_05_slope,
+            kappa_029=kappa_029, kappa_029_slope=kappa_029_slope,
+            kappa_008=kappa_008, kappa_008_slope=kappa_008_slope,
+            input_port=input_port,
+            delta_Loff=delta_Loff,
+        )
+
+        with open(out_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["wavelength_nm", "T_top", "T_bottom"])
+            for i in range(len(wavelengths_nm)):
+                writer.writerow([wavelengths_nm[i], float(T_top[i]), float(T_bottom[i])])
+
+        return ToolResult(
+            content=[TextContent(type="text", text=f"Stage 2 MZI simulation completed. Saved CSV to: {out_path}")],
+            structured_content={"output_path": out_path},
+        )
+
+    except Exception as e:
+        return ToolResult(content=[TextContent(type="text", text=f"Simulation failed: {e!s}")])
+@mcp.tool(
     name="list_available_models",
     description="List available photonic DT models with brief descriptions and key parameters.",
     tags=["discovery", "models", "help"],
@@ -283,6 +536,42 @@ async def list_available_models() -> ToolResult:
                 "n*_*, kappa_*, *_slope",
             ],
             "output": "wavelength_nm, λ1..λ8",
+        },
+        {
+            "name": "mzi_filter_5c",
+            "description": "Single 5-coupler MZI cascade (top/bottom outputs).",
+            "key_parameters": [
+                "lam_start_nm", "lam_stop_nm", "num_points", "lambda0", "delta_lambda",
+                "n*, kappa_*, *_slope", "input_port",
+            ],
+            "output": "wavelength_nm, T_top, T_bottom",
+        },
+        {
+            "name": "mzi_stage3",
+            "description": "Stage 3 MZI with default 8-channel filter parameters (top/bottom outputs).",
+            "key_parameters": [
+                "lam_start_nm", "lam_stop_nm", "num_points", "lambda0", "delta_lambda",
+                "n0, n1, n2, kappa_05, kappa_02, kappa_004, *_slope", "input_port",
+            ],
+            "output": "wavelength_nm, T_top, T_bottom",
+        },
+        {
+            "name": "mzi_stage2",
+            "description": "Stage 2 MZI with top ΔL and bottom 2ΔL (top/bottom outputs).",
+            "key_parameters": [
+                "lam_start_nm", "lam_stop_nm", "num_points", "lambda0", "delta_lambda",
+                "n0, n1, n2, kappa_05, kappa_029, kappa_008, *_slope", "input_port",
+            ],
+            "output": "wavelength_nm, T_top, T_bottom",
+        },
+        {
+            "name": "mzi_stage1",
+            "description": "Stage 1 MZI with top ΔL (top/bottom outputs).",
+            "key_parameters": [
+                "lam_start_nm", "lam_stop_nm", "num_points", "lambda0", "delta_lambda",
+                "n0, n1, n2, kappa_05, *_slope", "input_port",
+            ],
+            "output": "wavelength_nm, T_top, T_bottom",
         },
     ]
 

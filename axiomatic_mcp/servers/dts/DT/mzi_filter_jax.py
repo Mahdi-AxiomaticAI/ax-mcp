@@ -53,7 +53,7 @@ def mzi_transmission_jax(
     k1, k1_slope=0.0,
     k2=0.0, k2_slope=0.0,
     k3=0.0, k3_slope=0.0,
-    k4=0.0, k4_slope=0.0
+    k4=0.0, k4_slope=0.0,
 ):
     """Calculate MZI transmission for different stage configurations."""
     ngr = waveguide_group_index(n0, n1, n2, lambda0)
@@ -70,7 +70,7 @@ def mzi_transmission_jax(
     two_delta_L_pi = two_delta_L + 0.5 * lambda0 / n0
 
     input_vec = jnp.where(
-        (stages == 3) | (input_port == 1),
+        (stages >= 3) | (input_port == 1),
         jnp.array([1.0, 0.0]),
         jnp.array([0.0, 1.0])
     )
@@ -98,7 +98,7 @@ def mzi_transmission_jax(
     def stage3(wl):
         neff = waveguide_effective_index(n0, n1, n2, lambda0, wl)
         k1_ = coupler_kappa(k1, k1_slope, lambda0, wl)
-        k2_ = coupler_kappa(k3, k3_slope, lambda0, wl)
+        k2_ = coupler_kappa(k2, k2_slope, lambda0, wl)
         k3_ = coupler_kappa(k3, k3_slope, lambda0, wl)
         k4_ = coupler_kappa(k4, k4_slope, lambda0, wl)
         T = (
@@ -200,3 +200,6 @@ def evaluate_mzi_filter_jax(
         'λ7': T2_3 * T1_2A * T1_1B,
         'λ8': T1_3 * T1_2B * T1_1D
     }
+
+
+## 5-coupler evaluation moved to dedicated module `mzi_filter_5c_jax.py` to avoid duplication.
