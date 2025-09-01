@@ -36,11 +36,16 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.0.0",
 ]
+tidy3d = [
+    "tidy3d>=2.0.0",
+]
 
 [project.scripts]
 axiomatic-pic = "axiomatic_mcp.servers.pic:main"
 axiomatic-documents = "axiomatic_mcp.servers.documents:main"
 axiomatic-plots = "axiomatic_mcp.servers.plots:main"
+axiomatic-dts = "axiomatic_mcp.servers.dts:main"
+axiomatic-tidy3d = "axiomatic_mcp.servers.tidy3d:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

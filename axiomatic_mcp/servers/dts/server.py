@@ -26,6 +26,63 @@ def _ensure_output_dir() -> str:
     return out_dir
 
 
+def _save_plot(wavelengths, data, title: str, xlabel: str, ylabel: str, filename: str, 
+               data_labels=None, show_dB: bool = False):
+    """Helper function to create and save plots."""
+    try:
+        import matplotlib.pyplot as plt
+        import numpy as np
+        
+        plt.figure(figsize=(10, 6))
+        
+        if isinstance(data, dict):
+            # Multiple data series (like MZI channels)
+            for key, values in data.items():
+                if show_dB and key not in ['wavelength_nm']:
+                    values_plot = 10 * np.log10(np.maximum(values, 1e-12))
+                    ylabel_plot = ylabel + " (dB)"
+                else:
+                    values_plot = values
+                    ylabel_plot = ylabel
+                plt.plot(wavelengths, values_plot, label=key)
+            plt.legend()
+        elif hasattr(data, '__len__') and len(data) == 2:
+            # Two data series (like T_top, T_bottom)
+            labels = data_labels if data_labels else ['Top', 'Bottom']
+            for i, values in enumerate(data):
+                if show_dB:
+                    values_plot = 10 * np.log10(np.maximum(values, 1e-12))
+                    ylabel_plot = ylabel + " (dB)"
+                else:
+                    values_plot = values
+                    ylabel_plot = ylabel
+                plt.plot(wavelengths, values_plot, label=labels[i])
+            plt.legend()
+        else:
+            # Single data series
+            if show_dB:
+                data_plot = 10 * np.log10(np.maximum(data, 1e-12))
+                ylabel_plot = ylabel + " (dB)"
+            else:
+                data_plot = data
+                ylabel_plot = ylabel
+            plt.plot(wavelengths, data_plot)
+            
+        plt.title(title)
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel_plot if show_dB else ylabel)
+        plt.grid(True, alpha=0.3)
+        
+        out_dir = _ensure_output_dir()
+        plot_path = os.path.join(out_dir, filename)
+        plt.savefig(plot_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        
+        return plot_path
+    except ImportError:
+        return None
+
+
 mcp = FastMCP(
     name="Axiomatic DTS",
     instructions=(
@@ -106,6 +163,8 @@ async def simulate_multimode_ring(
     random_phase_seed: Annotated[int, "Random phase seed for modes"] = 0,
     # Output
     output_filename: Annotated[str, "CSV filename (saved to mcp_output)"] = "ring_transmission.csv",
+    enable_plot: Annotated[bool, "Generate and save transmission plot"] = False,
+    plot_dB: Annotated[bool, "Show plot in dB scale"] = True,
 ) -> ToolResult:
     """Run the multimode ring simulation and save results as CSV."""
     try:
@@ -162,10 +221,26 @@ async def simulate_multimode_ring(
             for w, lin, db in zip(wl_nm.tolist(), I_linear.tolist(), I_dB.tolist()):
                 writer.writerow([float(w), float(lin), float(db)])
 
+        plot_path = None
+        if enable_plot:
+            plot_filename = output_filename.replace('.csv', '.png')
+            data_to_plot = I_dB if plot_dB else I_linear
+            ylabel = "Transmission"
+            plot_path = _save_plot(
+                wl_nm, data_to_plot,
+                title="Multimode Ring Transmission",
+                xlabel="Wavelength (nm)",
+                ylabel=ylabel,
+                filename=plot_filename,
+                show_dB=plot_dB
+            )
+
         summary = (
             f"Multimode ring simulation completed. Saved CSV to: {out_path}\n"
             f"Points: {len(wl_nm.tolist())}; Wavelength range: {float(wl_nm[0]):.3f}–{float(wl_nm[-1]):.3f} nm"
         )
+        if plot_path:
+            summary += f"\nPlot saved to: {plot_path}"
         return ToolResult(
             content=[TextContent(type="text", text=summary)],
             structured_content={"output_path": out_path},
@@ -204,6 +279,8 @@ async def simulate_mzi_filter_5c(
     kappa_c5_slope: Annotated[float, "Slope for kappa_c5 vs wavelength"] = 0.0,
     input_port: Annotated[int, "Input port (1=top, 2=bottom)"] = 1,
     output_filename: Annotated[str, "CSV filename (saved to mcp_output)"] = "mzi_5c_transmission.csv",
+    enable_plot: Annotated[bool, "Generate and save transmission plot"] = False,
+    plot_dB: Annotated[bool, "Show plot in dB scale"] = True,
 ) -> ToolResult:
     try:
         import jax.numpy as jnp
@@ -237,10 +314,25 @@ async def simulate_mzi_filter_5c(
             for idx in range(len(wl_list)):
                 writer.writerow([float(wl_list[idx]), float(t_top[idx]), float(t_bot[idx])])
 
+        plot_path = None
+        if enable_plot:
+            plot_filename = output_filename.replace('.csv', '.png')
+            plot_path = _save_plot(
+                wl_nm, [T_top, T_bottom],
+                title="5-Coupler MZI Transmission",
+                xlabel="Wavelength (nm)",
+                ylabel="Transmission",
+                filename=plot_filename,
+                data_labels=['T_top', 'T_bottom'],
+                show_dB=plot_dB
+            )
+
         summary = (
             f"5-coupler MZI simulation completed. Saved CSV to: {out_path}\n"
             f"Points: {len(wl_nm.tolist())}; Wavelength range: {float(wl_nm[0]):.3f}–{float(wl_nm[-1]):.3f} nm"
         )
+        if plot_path:
+            summary += f"\nPlot saved to: {plot_path}"
         return ToolResult(
             content=[TextContent(type="text", text=summary)],
             structured_content={"output_path": out_path},
@@ -286,6 +378,8 @@ async def simulate_mzi_filter(
     kappa_004_slope: Annotated[float, "Slope for kappa_004 vs wavelength"] = 0.0,
     # Output
     output_filename: Annotated[str, "CSV filename (saved to mcp_output)"] = "mzi_transmission.csv",
+    enable_plot: Annotated[bool, "Generate and save transmission plot"] = False,
+    plot_dB: Annotated[bool, "Show plot in dB scale"] = True,
 ) -> ToolResult:
     """Run the MZI filter simulation and save results as CSV."""
     try:
@@ -324,10 +418,24 @@ async def simulate_mzi_filter(
                 row = [float(wl_list[idx])] + [float(chan_lists[cidx][idx]) for cidx in range(len(channel_keys))]
                 writer.writerow(row)
 
+        plot_path = None
+        if enable_plot:
+            plot_filename = output_filename.replace('.csv', '.png')
+            plot_path = _save_plot(
+                wl_nm, channels,
+                title="MZI Filter Transmission (8 Channels)",
+                xlabel="Wavelength (nm)",
+                ylabel="Transmission",
+                filename=plot_filename,
+                show_dB=plot_dB
+            )
+
         summary = (
             f"MZI filter simulation completed. Saved CSV to: {out_path}\n"
             f"Points: {len(wl_nm.tolist())}; Wavelength range: {float(wl_nm[0]):.3f}–{float(wl_nm[-1]):.3f} nm"
         )
+        if plot_path:
+            summary += f"\nPlot saved to: {plot_path}"
         return ToolResult(
             content=[TextContent(type="text", text=summary)],
             structured_content={"output_path": out_path},
@@ -359,6 +467,8 @@ async def simulate_mzi_stage3(
     kappa_004_slope: Annotated[float, "Slope for kappa_004 vs wavelength"] = 0.0,
     input_port: Annotated[int, "Input port (1=top, 2=bottom)"] = 1,
     output_filename: Annotated[str, "CSV filename (saved to mcp_output)"] = "mzi_stage3_transmission.csv",
+    enable_plot: Annotated[bool, "Generate and save transmission plot"] = False,
+    plot_dB: Annotated[bool, "Show plot in dB scale"] = True,
 ) -> ToolResult:
     try:
         import numpy as np
@@ -382,14 +492,25 @@ async def simulate_mzi_stage3(
             for i in range(len(wavelengths_nm)):
                 writer.writerow([wavelengths_nm[i], float(T_top[i]), float(T_bottom[i])])
 
+        plot_path = None
+        if enable_plot:
+            plot_filename = output_filename.replace('.csv', '.png')
+            plot_path = _save_plot(
+                wavelengths_nm, [T_top, T_bottom],
+                title="Stage 3 MZI Transmission",
+                xlabel="Wavelength (nm)",
+                ylabel="Transmission",
+                filename=plot_filename,
+                data_labels=['T_top', 'T_bottom'],
+                show_dB=plot_dB
+            )
+
+        summary = f"Stage 3 MZI simulation completed. Saved CSV to: {out_path}\nPoints: {num_points}; Wavelength range: {lam_start_nm:.3f}–{lam_stop_nm:.3f} nm"
+        if plot_path:
+            summary += f"\nPlot saved to: {plot_path}"
+
         return ToolResult(
-            content=[
-                TextContent(
-                    type="text",
-                    text=f"Stage 3 MZI simulation completed. Saved CSV to: {out_path}\n"
-                         f"Points: {num_points}; Wavelength range: {lam_start_nm:.3f}–{lam_stop_nm:.3f} nm"
-                )
-            ],
+            content=[TextContent(type="text", text=summary)],
             structured_content={"output_path": out_path},
         )
 
@@ -416,6 +537,8 @@ async def simulate_mzi_stage1(
     input_port: Annotated[int, "Input port (1=top, 2=bottom)"] = 1,
     delta_Loff: Annotated[float, "Additional ΔL offset (m)"] = 0.0,
     output_filename: Annotated[str, "CSV filename (saved to mcp_output)"] = "mzi_stage1_transmission.csv",
+    enable_plot: Annotated[bool, "Generate and save transmission plot"] = False,
+    plot_dB: Annotated[bool, "Show plot in dB scale"] = True,
 ) -> ToolResult:
     try:
         import numpy as np
@@ -443,8 +566,25 @@ async def simulate_mzi_stage1(
             for i in range(len(wavelengths_nm)):
                 writer.writerow([wavelengths_nm[i], float(T_top[i]), float(T_bottom[i])])
 
+        plot_path = None
+        if enable_plot:
+            plot_filename = output_filename.replace('.csv', '.png')
+            plot_path = _save_plot(
+                wavelengths_nm, [T_top, T_bottom],
+                title="Stage 1 MZI Transmission",
+                xlabel="Wavelength (nm)",
+                ylabel="Transmission",
+                filename=plot_filename,
+                data_labels=['T_top', 'T_bottom'],
+                show_dB=plot_dB
+            )
+
+        summary = f"Stage 1 MZI simulation completed. Saved CSV to: {out_path}"
+        if plot_path:
+            summary += f"\nPlot saved to: {plot_path}"
+
         return ToolResult(
-            content=[TextContent(type="text", text=f"Stage 1 MZI simulation completed. Saved CSV to: {out_path}")],
+            content=[TextContent(type="text", text=summary)],
             structured_content={"output_path": out_path},
         )
 
@@ -475,6 +615,8 @@ async def simulate_mzi_stage2(
     input_port: Annotated[int, "Input port (1=top, 2=bottom)"] = 1,
     delta_Loff: Annotated[float, "Additional ΔL offset (m)"] = 0.0,
     output_filename: Annotated[str, "CSV filename (saved to mcp_output)"] = "mzi_stage2_transmission.csv",
+    enable_plot: Annotated[bool, "Generate and save transmission plot"] = False,
+    plot_dB: Annotated[bool, "Show plot in dB scale"] = True,
 ) -> ToolResult:
     try:
         import numpy as np
@@ -504,8 +646,25 @@ async def simulate_mzi_stage2(
             for i in range(len(wavelengths_nm)):
                 writer.writerow([wavelengths_nm[i], float(T_top[i]), float(T_bottom[i])])
 
+        plot_path = None
+        if enable_plot:
+            plot_filename = output_filename.replace('.csv', '.png')
+            plot_path = _save_plot(
+                wavelengths_nm, [T_top, T_bottom],
+                title="Stage 2 MZI Transmission",
+                xlabel="Wavelength (nm)",
+                ylabel="Transmission",
+                filename=plot_filename,
+                data_labels=['T_top', 'T_bottom'],
+                show_dB=plot_dB
+            )
+
+        summary = f"Stage 2 MZI simulation completed. Saved CSV to: {out_path}"
+        if plot_path:
+            summary += f"\nPlot saved to: {plot_path}"
+
         return ToolResult(
-            content=[TextContent(type="text", text=f"Stage 2 MZI simulation completed. Saved CSV to: {out_path}")],
+            content=[TextContent(type="text", text=summary)],
             structured_content={"output_path": out_path},
         )
 
