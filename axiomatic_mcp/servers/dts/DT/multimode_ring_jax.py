@@ -258,17 +258,24 @@ def compute_multimode_response(
     E_bg = _external_background_field(wl, n_eff_bg=1.45, paths=tuple(bg_paths))
 
     # Combine modes with partial coherence
-    # Incoherent sum of intensities
+    # Incoherent sum of intensities (modes only)
     I_incoh = jnp.sum((weights**2) * jnp.abs(E_modes) ** 2, axis=0)
-    # Fully coherent sum (fields)
+    # Fully coherent sum (fields) for modes
     E_coh = jnp.sum(weights * E_modes, axis=0)
-    I_coh = jnp.abs(E_coh) ** 2
     gamma = jnp.clip(params.inter_mode_coherence, 0.0, 1.0)
-    I_ring = (1.0 - gamma) * I_incoh + gamma * I_coh
 
-    # Add background field and compute total intensity
-    E_total = E_coh + E_bg  # use coherent sum representative for interference
-    I_total = (1.0 - gamma) * I_ring + gamma * jnp.abs(E_total) ** 2
+    # Background intensity
+    I_bg = jnp.abs(E_bg) ** 2
+
+    # Incoherent total intensity (modes + background)
+    I_incoh_total = I_incoh + I_bg
+
+    # Coherent total intensity (modes + background)
+    E_total_coh = E_coh + E_bg
+    I_coh_total = jnp.abs(E_total_coh) ** 2
+
+    # Blend incoherent/coherent contributions
+    I_total = (1.0 - gamma) * I_incoh_total + gamma * I_coh_total
 
     # Grating envelope (loss in dB)
     if params.enable_grating:

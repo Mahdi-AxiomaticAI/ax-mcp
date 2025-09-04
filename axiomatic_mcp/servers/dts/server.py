@@ -83,6 +83,229 @@ def _save_plot(wavelengths, data, title: str, xlabel: str, ylabel: str, filename
         return None
 
 
+def _generate_multimode_ring_code(**kwargs) -> str:
+    """Generate Python code for multimode ring simulation."""
+    return f'''"""Generated code for multimode ring resonator simulation.
+
+This script reproduces the simulation that was run via the MCP server.
+"""
+
+import csv
+from axiomatic_mcp.servers.dts.DT.multimode_ring_jax import (
+    MultiModeRingParams,
+    ModeParams,
+    compute_multimode_response,
+)
+
+# Simulation parameters
+params = MultiModeRingParams(
+    lam_start_nm={kwargs.get('lam_start_nm', 1540.0)},
+    lam_stop_nm={kwargs.get('lam_stop_nm', 1560.0)},
+    num_points={kwargs.get('num_points', 2001)},
+    ring_radius_um={kwargs.get('ring_radius_um', 10000.0)},
+    enable_mode2={kwargs.get('enable_mode2', False)},
+    enable_mode3={kwargs.get('enable_mode3', False)},
+    mode1=ModeParams(
+        n_eff={kwargs.get('mode1_neff', 2.40)},
+        alpha_dB_per_cm={kwargs.get('mode1_alpha_dB_per_cm', 3.0)},
+        kappa={kwargs.get('mode1_kappa', 0.20)},
+        weight={kwargs.get('mode1_weight', 1.0)}
+    ),
+    mode2=ModeParams(
+        n_eff={kwargs.get('mode2_neff', 2.45)},
+        alpha_dB_per_cm={kwargs.get('mode2_alpha_dB_per_cm', 3.0)},
+        kappa={kwargs.get('mode2_kappa', 0.15)},
+        weight={kwargs.get('mode2_weight', 0.6)}
+    ),
+    mode3=ModeParams(
+        n_eff={kwargs.get('mode3_neff', 2.50)},
+        alpha_dB_per_cm={kwargs.get('mode3_alpha_dB_per_cm', 3.0)},
+        kappa={kwargs.get('mode3_kappa', 0.10)},
+        weight={kwargs.get('mode3_weight', 0.4)}
+    ),
+    r_facet={kwargs.get('r_facet', 0.10)},
+    L_wg_um={kwargs.get('L_wg_um', 200.0)},
+    enable_short_path={kwargs.get('enable_short_path', True)},
+    r_short={kwargs.get('r_short', 0.05)},
+    L_short_um={kwargs.get('L_short_um', 50.0)},
+    enable_substrate={kwargs.get('enable_substrate', False)},
+    r_sub={kwargs.get('r_sub', 0.02)},
+    L_sub_um={kwargs.get('L_sub_um', 300.0)},
+    inter_mode_coherence={kwargs.get('inter_mode_coherence', 1.0)},
+    enable_grating={kwargs.get('enable_grating', False)},
+    grating_center_nm={kwargs.get('grating_center_nm', 1550.0)},
+    grating_fwhm_nm={kwargs.get('grating_fwhm_nm', 20.0)},
+    grating_peak_loss_dB={kwargs.get('grating_peak_loss_dB', 3.0)},
+    enable_finite_linewidth={kwargs.get('enable_finite_linewidth', False)},
+    source_linewidth_fwhm_nm={kwargs.get('source_linewidth_fwhm_nm', 0.01)},
+    enable_pol_drift={kwargs.get('enable_pol_drift', False)},
+    pol_drift_ampl={kwargs.get('pol_drift_ampl', 0.1)},
+    enable_mech_drift={kwargs.get('enable_mech_drift', False)},
+    mech_drift_amp={kwargs.get('mech_drift_amp', 0.1)},
+    mech_drift_period_nm={kwargs.get('mech_drift_period_nm', 200.0)},
+    enable_random_loss={kwargs.get('enable_random_loss', False)},
+    random_loss_scale={kwargs.get('random_loss_scale', 0.05)},
+    insertion_loss_dB={kwargs.get('insertion_loss_dB', 0.0)},
+    offset_level={kwargs.get('offset_level', 0.0)},
+    random_phase_seed={kwargs.get('random_phase_seed', 0)},
+)
+
+# Run simulation
+wl_nm, I_linear, I_dB = compute_multimode_response(params)
+
+# Save results
+output_filename = "{kwargs.get('output_filename', 'ring_transmission.csv')}"
+with open(output_filename, "w", newline="", encoding="utf-8") as f:
+    writer = csv.writer(f)
+    writer.writerow(["wavelength_nm", "transmission_linear", "transmission_dB"])
+    for w, lin, db in zip(wl_nm.tolist(), I_linear.tolist(), I_dB.tolist()):
+        writer.writerow([float(w), float(lin), float(db)])
+
+print(f"Multimode ring simulation completed. Results saved to {{output_filename}}")
+print(f"Points: {{len(wl_nm.tolist())}}; Wavelength range: {{float(wl_nm[0]):.3f}}-{{float(wl_nm[-1]):.3f}} nm")
+'''
+
+
+def _generate_mzi_filter_code(**kwargs) -> str:
+    """Generate Python code for MZI filter simulation."""
+    return f'''"""Generated code for MZI filter simulation.
+
+This script reproduces the simulation that was run via the MCP server.
+"""
+
+import csv
+import jax.numpy as jnp
+from axiomatic_mcp.servers.dts.DT.mzi_filter_jax import evaluate_mzi_filter_jax
+
+# Simulation parameters
+lam_start_nm = {kwargs.get('lam_start_nm', 1270.0)}
+lam_stop_nm = {kwargs.get('lam_stop_nm', 1310.0)}
+num_points = {kwargs.get('num_points', 4001)}
+lambda0 = {kwargs.get('lambda0', 1290e-9)}
+delta_lambda = {kwargs.get('delta_lambda', 4.4e-9)}
+
+# Wavelength array
+wl_nm = jnp.linspace(lam_start_nm, lam_stop_nm, num_points)
+wl_m = wl_nm * 1e-9
+
+# Run simulation
+channels = evaluate_mzi_filter_jax(
+    wl_m,
+    lambda0=lambda0,
+    delta_lambda=delta_lambda,
+    n0_1={kwargs.get('n0_1', 2.39)}, n1_1={kwargs.get('n1_1', -1.5e7)}, n2_1={kwargs.get('n2_1', 1.2e13)},
+    n0_2={kwargs.get('n0_2', 2.39)}, n1_2={kwargs.get('n1_2', -1.5e7)}, n2_2={kwargs.get('n2_2', 1.2e13)},
+    n0_3={kwargs.get('n0_3', 2.39)}, n1_3={kwargs.get('n1_3', -1.5e7)}, n2_3={kwargs.get('n2_3', 1.2e13)},
+    kappa_05={kwargs.get('kappa_05', 0.5)}, kappa_05_slope={kwargs.get('kappa_05_slope', 0.0)},
+    kappa_029={kwargs.get('kappa_029', 0.29)}, kappa_029_slope={kwargs.get('kappa_029_slope', 0.0)},
+    kappa_008={kwargs.get('kappa_008', 0.08)}, kappa_008_slope={kwargs.get('kappa_008_slope', 0.0)},
+    kappa_02={kwargs.get('kappa_02', 0.2)}, kappa_02_slope={kwargs.get('kappa_02_slope', 0.0)},
+    kappa_004={kwargs.get('kappa_004', 0.04)}, kappa_004_slope={kwargs.get('kappa_004_slope', 0.0)},
+)
+
+# Save results
+channel_keys = ["λ1", "λ2", "λ3", "λ4", "λ5", "λ6", "λ7", "λ8"]
+output_filename = "{kwargs.get('output_filename', 'mzi_transmission.csv')}"
+
+with open(output_filename, "w", newline="", encoding="utf-8") as f:
+    writer = csv.writer(f)
+    writer.writerow(["wavelength_nm"] + channel_keys)
+    wl_list = wl_nm.tolist()
+    chan_lists = [channels[k].tolist() for k in channel_keys]
+    for idx in range(len(wl_list)):
+        row = [float(wl_list[idx])] + [float(chan_lists[cidx][idx]) for cidx in range(len(channel_keys))]
+        writer.writerow(row)
+
+print(f"MZI filter simulation completed. Results saved to {{output_filename}}")
+print(f"Points: {{len(wl_nm.tolist())}}; Wavelength range: {{float(wl_nm[0]):.3f}}-{{float(wl_nm[-1]):.3f}} nm")
+'''
+
+
+def _generate_mzi_stage_code(stage_num: int, **kwargs) -> str:
+    """Generate Python code for MZI stage simulation."""
+    import_map = {
+        1: "mzi_stage1_jax",
+        2: "mzi_stage2_jax", 
+        3: "mzi_stage3_jax",
+        "5c": "mzi_filter_5c_jax"
+    }
+    
+    function_map = {
+        1: "evaluate_mzi_stage1_jax",
+        2: "evaluate_mzi_stage2_jax",
+        3: "evaluate_mzi_stage3_jax", 
+        "5c": "evaluate_mzi_filter_5c_jax"
+    }
+    
+    module = import_map.get(stage_num, "mzi_stage1_jax")
+    function = function_map.get(stage_num, "evaluate_mzi_stage1_jax")
+    
+    return f'''"""Generated code for MZI stage {stage_num} simulation.
+
+This script reproduces the simulation that was run via the MCP server.
+"""
+
+import csv
+import numpy as np
+from axiomatic_mcp.servers.dts.DT.{module} import {function}
+
+# Simulation parameters
+lam_start_nm = {kwargs.get('lam_start_nm', 1270)}
+lam_stop_nm = {kwargs.get('lam_stop_nm', 1310)}
+num_points = {kwargs.get('num_points', 4001)}
+lambda0 = {kwargs.get('lambda0', 1.29e-6)}
+delta_lambda = {kwargs.get('delta_lambda', 4.4e-9)}
+
+# Wavelength array
+wavelengths_nm = np.linspace(lam_start_nm, lam_stop_nm, num_points)
+wavelengths_m = wavelengths_nm * 1e-9
+
+# Run simulation''' + (f'''
+T_top, T_bottom = {function}(
+    wavelengths_m, lambda0, delta_lambda,
+    n0={kwargs.get('n0', 2.39)}, n1={kwargs.get('n1', -1.5e7)}, n2={kwargs.get('n2', 1.2e13)},
+    kappa_05={kwargs.get('kappa_05', 0.5)}, kappa_05_slope={kwargs.get('kappa_05_slope', 0.0)},''' + 
+    (f'''
+    kappa_02={kwargs.get('kappa_02', 0.2)}, kappa_02_slope={kwargs.get('kappa_02_slope', 0.0)},
+    kappa_004={kwargs.get('kappa_004', 0.04)}, kappa_004_slope={kwargs.get('kappa_004_slope', 0.0)},''' if stage_num == 3 else '') +
+    (f'''
+    kappa_029={kwargs.get('kappa_029', 0.29)}, kappa_029_slope={kwargs.get('kappa_029_slope', 0.0)},
+    kappa_008={kwargs.get('kappa_008', 0.08)}, kappa_008_slope={kwargs.get('kappa_008_slope', 0.0)},''' if stage_num == 2 else '') +
+    (f'''
+    kappa_c1={kwargs.get('kappa_c1', 0.50)}, kappa_c1_slope={kwargs.get('kappa_c1_slope', 0.0)},
+    kappa_c2={kwargs.get('kappa_c2', 0.13)}, kappa_c2_slope={kwargs.get('kappa_c2_slope', 0.0)},
+    kappa_c3={kwargs.get('kappa_c3', 0.12)}, kappa_c3_slope={kwargs.get('kappa_c3_slope', 0.0)},
+    kappa_c4={kwargs.get('kappa_c4', 0.50)}, kappa_c4_slope={kwargs.get('kappa_c4_slope', 0.0)},
+    kappa_c5={kwargs.get('kappa_c5', 0.25)}, kappa_c5_slope={kwargs.get('kappa_c5_slope', 0.0)},''' if stage_num == "5c" else '') + f'''
+    input_port={kwargs.get('input_port', 1)},''' + 
+    (f'''
+    delta_Loff={kwargs.get('delta_Loff', 0.0)},''' if stage_num in [1, 2] else '') + '''
+)''' if stage_num != "5c" else f'''
+T_top, T_bottom = {function}(
+    wavelengths_m,
+    lambda0=lambda0,
+    delta_lambda=delta_lambda,
+    n0={kwargs.get('n0', 2.39)}, n1={kwargs.get('n1', -1.5e7)}, n2={kwargs.get('n2', 1.2e13)},
+    kappa_c1={kwargs.get('kappa_c1', 0.50)}, kappa_c1_slope={kwargs.get('kappa_c1_slope', 0.0)},
+    kappa_c2={kwargs.get('kappa_c2', 0.13)}, kappa_c2_slope={kwargs.get('kappa_c2_slope', 0.0)},
+    kappa_c3={kwargs.get('kappa_c3', 0.12)}, kappa_c3_slope={kwargs.get('kappa_c3_slope', 0.0)},
+    kappa_c4={kwargs.get('kappa_c4', 0.50)}, kappa_c4_slope={kwargs.get('kappa_c4_slope', 0.0)},
+    kappa_c5={kwargs.get('kappa_c5', 0.25)}, kappa_c5_slope={kwargs.get('kappa_c5_slope', 0.0)},
+    input_port={kwargs.get('input_port', 1)},
+)''') + f'''
+
+# Save results
+output_filename = "{kwargs.get('output_filename', f'mzi_stage{stage_num}_transmission.csv')}"
+with open(output_filename, "w", newline="", encoding="utf-8") as f:
+    writer = csv.writer(f)
+    writer.writerow(["wavelength_nm", "T_top", "T_bottom"])
+    for i in range(len(wavelengths_nm)):
+        writer.writerow([wavelengths_nm[i], float(T_top[i]), float(T_bottom[i])])
+
+print(f"Stage {stage_num} MZI simulation completed. Results saved to {{output_filename}}")
+'''
+
+
 mcp = FastMCP(
     name="Axiomatic DTS",
     instructions=(
@@ -213,6 +436,13 @@ async def simulate_multimode_ring(
         wl_nm, I_linear, I_dB = compute_multimode_response(params)
 
         out_dir = _ensure_output_dir()
+        
+        # Generate and save Python code
+        code_content = _generate_multimode_ring_code(**locals())
+        code_path = os.path.join(out_dir, output_filename.replace('.csv', '_simulation.py'))
+        with open(code_path, "w", encoding="utf-8") as f:
+            f.write(code_content)
+        
         out_path = os.path.join(out_dir, output_filename)
 
         with open(out_path, "w", newline="", encoding="utf-8") as f:
@@ -224,7 +454,8 @@ async def simulate_multimode_ring(
         plot_path = None
         if enable_plot:
             plot_filename = output_filename.replace('.csv', '.png')
-            data_to_plot = I_dB if plot_dB else I_linear
+            # Always pass linear data; let plotting helper convert to dB if requested
+            data_to_plot = I_linear
             ylabel = "Transmission"
             plot_path = _save_plot(
                 wl_nm, data_to_plot,
@@ -303,6 +534,13 @@ async def simulate_mzi_filter_5c(
         )
 
         out_dir = _ensure_output_dir()
+        
+        # Generate and save Python code
+        code_content = _generate_mzi_stage_code("5c", **locals())
+        code_path = os.path.join(out_dir, output_filename.replace('.csv', '_simulation.py'))
+        with open(code_path, "w", encoding="utf-8") as f:
+            f.write(code_content)
+        
         out_path = os.path.join(out_dir, output_filename)
 
         with open(out_path, "w", newline="", encoding="utf-8") as f:
@@ -406,6 +644,13 @@ async def simulate_mzi_filter(
         # Enforce consistent channel order
         channel_keys = ["λ1", "λ2", "λ3", "λ4", "λ5", "λ6", "λ7", "λ8"]
         out_dir = _ensure_output_dir()
+        
+        # Generate and save Python code
+        code_content = _generate_mzi_filter_code(**locals())
+        code_path = os.path.join(out_dir, output_filename.replace('.csv', '_simulation.py'))
+        with open(code_path, "w", encoding="utf-8") as f:
+            f.write(code_content)
+        
         out_path = os.path.join(out_dir, output_filename)
 
         with open(out_path, "w", newline="", encoding="utf-8") as f:
@@ -475,6 +720,13 @@ async def simulate_mzi_stage3(
         from .DT.mzi_stage3_jax import evaluate_mzi_stage3_jax
 
         out_dir = _ensure_output_dir()
+        
+        # Generate and save Python code
+        code_content = _generate_mzi_stage_code(3, **locals())
+        code_path = os.path.join(out_dir, output_filename.replace('.csv', '_simulation.py'))
+        with open(code_path, "w", encoding="utf-8") as f:
+            f.write(code_content)
+        
         out_path = os.path.join(out_dir, output_filename)
 
         wavelengths_nm = np.linspace(lam_start_nm, lam_stop_nm, num_points)
@@ -545,6 +797,13 @@ async def simulate_mzi_stage1(
         from .DT.mzi_stage1_jax import evaluate_mzi_stage1_jax
 
         out_dir = _ensure_output_dir()
+        
+        # Generate and save Python code
+        code_content = _generate_mzi_stage_code(1, **locals())
+        code_path = os.path.join(out_dir, output_filename.replace('.csv', '_simulation.py'))
+        with open(code_path, "w", encoding="utf-8") as f:
+            f.write(code_content)
+        
         out_path = os.path.join(out_dir, output_filename)
 
         wavelengths_nm = np.linspace(lam_start_nm, lam_stop_nm, num_points)
@@ -623,6 +882,13 @@ async def simulate_mzi_stage2(
         from .DT.mzi_stage2_jax import evaluate_mzi_stage2_jax
 
         out_dir = _ensure_output_dir()
+        
+        # Generate and save Python code
+        code_content = _generate_mzi_stage_code(2, **locals())
+        code_path = os.path.join(out_dir, output_filename.replace('.csv', '_simulation.py'))
+        with open(code_path, "w", encoding="utf-8") as f:
+            f.write(code_content)
+        
         out_path = os.path.join(out_dir, output_filename)
 
         wavelengths_nm = np.linspace(lam_start_nm, lam_stop_nm, num_points)
