@@ -36,30 +36,55 @@ def resolve_material(family: str, model: str):
         raise ValueError(f"Material not found: {family}/{model}") from exc
 
 
-def make_coupled_rect_dielectric(
-    wavelengths_um,
+def get_powercoupling(
+    wavelengths,
     *,
-    wg_width1_um: float,
-    wg_width2_um: float,
-    wg_height_um: float,
-    wg_gap_um: float,
-    core_medium,
-    clad_medium,
-    sidewall_angle_deg: float,
-    polarization: str,
+    wg_widths: tuple[float, float] = (0.5, 0.5),
+    wg_height: float = 0.22,
+    wg_gap: float = 0.2,
+    coupler_length: float = 50.0,
+    wg_medium,
+    cladding_medium,
+    polarization: str = 'te',
 ):
-    """Create a Tidy3D rectangular dielectric coupled waveguide object."""
+    """Calculate power coupling between 2 waveguides - following notebook approach.
+
+    Args:
+        wavelengths: wavelengths [um] - can be single value or array
+        wg_widths: waveguide widths as a tuple [um]
+        wg_height: waveguide thickness [um]
+        wg_gap: gap between the coupling waveguides [um]
+        coupler_length: Length of the coupling between the wgs [um]
+        wg_medium: core material
+        cladding_medium: cladding material
+        polarization: 'te' or 'tm'
+
+    Returns:
+        p_coupling: power coupling values (same shape as wavelengths)
+        coupled: waveguide object for mode analysis
+    """
     td, waveguide = _get_td_and_waveguide()
-    return waveguide.RectangularDielectric(
-        wavelength=wavelengths_um,
-        core_width=(wg_width1_um, wg_width2_um),
-        core_thickness=wg_height_um,
-        core_medium=core_medium,
-        clad_medium=clad_medium,
-        gap=wg_gap_um,
-        sidewall_angle=sidewall_angle_deg,
+
+    # Ensure wavelengths is a list/array
+    if np.isscalar(wavelengths):
+        wavelengths = [wavelengths]
+
+    coupled = waveguide.RectangularDielectric(
+        wavelength=wavelengths,
+        core_width=wg_widths,
+        core_thickness=wg_height,
+        core_medium=wg_medium,
+        clad_medium=cladding_medium,
+        gap=wg_gap,
+        sidewall_angle=0.0,
         mode_spec=td.ModeSpec(num_modes=2, filter_pol=polarization),
     )
+
+    n1 = coupled.n_eff.values[:, 0]
+    n2 = coupled.n_eff.values[:, 1]
+    p_coupling = np.sin(np.pi * coupler_length * np.abs(n1 - n2) / wavelengths) ** 2
+
+    return p_coupling, coupled
 
 
 def compute_coupling_vs_wavelength(
@@ -88,21 +113,19 @@ def compute_coupling_vs_wavelength(
     clad_medium = resolve_material(clad_material_family, clad_material_model)
 
     wavelengths_um = np.linspace(lam_start_um, lam_stop_um, num_wavelength_points)
-    coupled = make_coupled_rect_dielectric(
+
+    # Calculate coupling for all wavelengths at once - following notebook approach
+    p_coupling, _ = get_powercoupling(
         wavelengths_um,
-        wg_width1_um=wg_width1_um,
-        wg_width2_um=wg_width2_um,
-        wg_height_um=wg_height_um,
-        wg_gap_um=wg_gap_um,
-        core_medium=core_medium,
-        clad_medium=clad_medium,
-        sidewall_angle_deg=sidewall_angle_deg,
+        wg_widths=(wg_width1_um, wg_width2_um),
+        wg_height=wg_height_um,
+        wg_gap=wg_gap_um,
+        coupler_length=coupler_length_um,
+        wg_medium=core_medium,
+        cladding_medium=clad_medium,
         polarization=polarization,
     )
 
-    n1 = coupled.n_eff.values[:, 0]
-    n2 = coupled.n_eff.values[:, 1]
-    p_coupling = np.sin(np.pi * coupler_length_um * (n1 - n2) / wavelengths_um) ** 2
     return wavelengths_um, p_coupling
 
 
@@ -132,20 +155,20 @@ def compute_coupling_vs_length(
     clad_medium = resolve_material(clad_material_family, clad_material_model)
 
     lengths_um = np.linspace(length_start_um, length_stop_um, num_length_points)
-    coupled = make_coupled_rect_dielectric(
-        wavelength_um,
-        wg_width1_um=wg_width1_um,
-        wg_width2_um=wg_width2_um,
-        wg_height_um=wg_height_um,
-        wg_gap_um=wg_gap_um,
-        core_medium=core_medium,
-        clad_medium=clad_medium,
-        sidewall_angle_deg=sidewall_angle_deg,
-        polarization=polarization,
-    )
-    n1 = float(coupled.n_eff.values[0, 0])
-    n2 = float(coupled.n_eff.values[0, 1])
-    p_coupling = np.sin(np.pi * lengths_um * (n1 - n2) / wavelength_um) ** 2
+    p_coupling = np.zeros(num_length_points)
+
+    # Calculate coupling for each length using notebook approach
+    for i, length_um in enumerate(lengths_um):
+        p_coupling[i], _ = get_powercoupling(
+            wavelength_um,
+            wg_widths=(wg_width1_um, wg_width2_um),
+            wg_height=wg_height_um,
+            wg_gap=wg_gap_um,
+            coupler_length=length_um,
+            wg_medium=core_medium,
+            cladding_medium=clad_medium,
+            polarization=polarization,
+        )
     return lengths_um, p_coupling
 
 
@@ -167,16 +190,16 @@ def get_coupled_for_mode_plot(
     core_medium = resolve_material(core_material_family, core_material_model)
     clad_medium = resolve_material(clad_material_family, clad_material_model)
 
-    return make_coupled_rect_dielectric(
+    _, coupled = get_powercoupling(
         wavelength_um,
-        wg_width1_um=wg_width1_um,
-        wg_width2_um=wg_width2_um,
-        wg_height_um=wg_height_um,
-        wg_gap_um=wg_gap_um,
-        core_medium=core_medium,
-        clad_medium=clad_medium,
-        sidewall_angle_deg=sidewall_angle_deg,
+        wg_widths=(wg_width1_um, wg_width2_um),
+        wg_height=wg_height_um,
+        wg_gap=wg_gap_um,
+        coupler_length=1.0,  # Dummy length for mode plotting
+        wg_medium=core_medium,
+        cladding_medium=clad_medium,
         polarization=polarization,
     )
+    return coupled
 
 

@@ -68,14 +68,14 @@ polarization = "{kwargs.get('polarization', 'te')}"
 enable_coupling_vs_wavelength = {kwargs.get('enable_coupling_vs_wavelength', True)}
 lam_start_um = {kwargs.get('lam_start_um', 1.27)}
 lam_stop_um = {kwargs.get('lam_stop_um', 1.31)}
-num_wavelength_points = {kwargs.get('num_wavelength_points', 101)}
+num_wavelength_points = {kwargs.get('num_wavelength_points', 100)}
 enable_coupling_vs_length = {kwargs.get('enable_coupling_vs_length', True)}
 length_start_um = {kwargs.get('length_start_um', 0.0)}
 length_stop_um = {kwargs.get('length_stop_um', 100.0)}
 num_length_points = {kwargs.get('num_length_points', 21)}
 length_wavelength_um = {kwargs.get('length_wavelength_um', 1.31)}
 enable_mode_plots = {kwargs.get('enable_mode_plots', False)}
-mode_plot_wavelength_um = {kwargs.get('mode_plot_wavelength_um', 1.55)}
+mode_plot_wavelength_um = {kwargs.get('mode_plot_wavelength_um', 1.3)}
 output_prefix = "{kwargs.get('output_prefix', 'wg_coupler')}"
 
 # Main simulation code
@@ -213,8 +213,8 @@ wg_width_um = {kwargs.get('wg_width_um', 0.5)}
 wg_height_um = {kwargs.get('wg_height_um', 0.22)}
 sidewall_angle_deg = {kwargs.get('sidewall_angle_deg', 0.0)}
 num_modes = {kwargs.get('num_modes', 1)}
-lam_start_um = {kwargs.get('lam_start_um', 1.27)}
-lam_stop_um = {kwargs.get('lam_stop_um', 1.31)}
+lam_start_um = {kwargs.get('lam_start_um', 1.26)}
+lam_stop_um = {kwargs.get('lam_stop_um', 1.36)}
 num_wavelength_points = {kwargs.get('num_wavelength_points', 11)}
 enable_mode_plots = {kwargs.get('enable_mode_plots', False)}
 mode_plot_wavelength_um = {kwargs.get('mode_plot_wavelength_um', 1.3)}
@@ -360,9 +360,9 @@ async def simulate_waveguide_coupler(
     polarization: Annotated[str, "Mode polarization filter: 'te' or 'tm'"] = "te",
     # Wavelength sweep (micrometers)
     enable_coupling_vs_wavelength: Annotated[bool, "Whether to compute coupling vs wavelength"] = True,
-    lam_start_um: Annotated[float, "Start wavelength in micrometers"] = 1.27,
-    lam_stop_um: Annotated[float, "Stop wavelength in micrometers"] = 1.31,
-    num_wavelength_points: Annotated[int, "Number of wavelength points"] = 101,
+    lam_start_um: Annotated[float, "Start wavelength in micrometers"] = 1.26,
+    lam_stop_um: Annotated[float, "Stop wavelength in micrometers"] = 1.36,
+    num_wavelength_points: Annotated[int, "Number of wavelength points"] = 100,
     # Length sweep (micrometers)
     enable_coupling_vs_length: Annotated[bool, "Whether to compute coupling vs length"] = True,
     length_start_um: Annotated[float, "Start length in micrometers"] = 0.0,
@@ -371,7 +371,7 @@ async def simulate_waveguide_coupler(
     length_wavelength_um: Annotated[float, "Wavelength (µm) for the length sweep"] = 1.31,
     # Mode plotting
     enable_mode_plots: Annotated[bool, "Whether to save mode field plots (Ey) for the two lowest TE/TM modes"] = False,
-    mode_plot_wavelength_um: Annotated[float, "Wavelength (µm) for mode plots"] = 1.55,
+    mode_plot_wavelength_um: Annotated[float, "Wavelength (µm) for mode plots"] = 1.31,
     # Outputs
     output_prefix: Annotated[str, "Filename prefix for outputs (CSV/PNG)"] = "wg_coupler",
 ) -> ToolResult:
@@ -531,12 +531,12 @@ async def simulate_waveguide_dispersion(
     sidewall_angle_deg: Annotated[float, "Sidewall angle in degrees (0 = vertical)"] = 0.0,
     num_modes: Annotated[int, "Number of modes to compute"] = 1,
     # Wavelength sweep (micrometers)
-    lam_start_um: Annotated[float, "Start wavelength in micrometers"] = 1.27,
-    lam_stop_um: Annotated[float, "Stop wavelength in micrometers"] = 1.31,
+    lam_start_um: Annotated[float, "Start wavelength in micrometers"] = 1.26,
+    lam_stop_um: Annotated[float, "Stop wavelength in micrometers"] = 1.36,
     num_wavelength_points: Annotated[int, "Number of wavelength points"] = 11,
     # Mode plotting
     enable_mode_plots: Annotated[bool, "Whether to save mode field plots (Ey) and waveguide structure"] = False,
-    mode_plot_wavelength_um: Annotated[float, "Wavelength (µm) for mode plots"] = 1.3,
+    mode_plot_wavelength_um: Annotated[float, "Wavelength (µm) for mode plots"] = 1.31,
     # Outputs
     output_prefix: Annotated[str, "Filename prefix for outputs (CSV/PNG)"] = "wg_dispersion",
 ) -> ToolResult:

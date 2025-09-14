@@ -81,22 +81,33 @@ def compute_waveguide_dispersion(
     clad_medium = resolve_material(clad_material_family, clad_material_model)
 
     wavelengths_um = np.linspace(lam_start_um, lam_stop_um, num_wavelength_points)
+    neff_arr = np.zeros((num_wavelength_points, num_modes))
+    ng_arr = np.zeros((num_wavelength_points, num_modes))
     
-    strip = make_rect_dielectric_waveguide(
-        wavelengths_um,
-        wg_width_um=wg_width_um,
-        wg_height_um=wg_height_um,
-        core_medium=core_medium,
-        clad_medium=clad_medium,
-        sidewall_angle_deg=sidewall_angle_deg,
-        num_modes=num_modes,
-    )
-
-    # Extract effective index and group index
-    neff_arr = np.squeeze(strip.n_eff.values)
-    ng_arr = np.squeeze(strip.n_group.values)
+    # Calculate modes for each wavelength individually using a for loop
+    strip_objects = []
+    for i, wavelength_um in enumerate(wavelengths_um):
+        strip = make_rect_dielectric_waveguide(
+            wavelength_um,
+            wg_width_um=wg_width_um,
+            wg_height_um=wg_height_um,
+            core_medium=core_medium,
+            clad_medium=clad_medium,
+            sidewall_angle_deg=sidewall_angle_deg,
+            num_modes=num_modes,
+        )
+        
+        # Extract effective index and group index for this wavelength
+        neff_arr[i, :] = np.squeeze(strip.n_eff.values)
+        ng_arr[i, :] = np.squeeze(strip.n_group.values)
+        strip_objects.append(strip)
     
-    return wavelengths_um, neff_arr, ng_arr, strip
+    # Squeeze arrays if only one mode
+    if num_modes == 1:
+        neff_arr = np.squeeze(neff_arr)
+        ng_arr = np.squeeze(ng_arr)
+    
+    return wavelengths_um, neff_arr, ng_arr, strip_objects[-1]
 
 
 def get_waveguide_for_mode_plot(
