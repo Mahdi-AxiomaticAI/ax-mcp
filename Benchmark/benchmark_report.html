@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Femwell MCP Validation Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 40px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+
+        h2 {
+            color: #34495e;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ecf0f1;
+            font-size: 2em;
+        }
+
+        h3 {
+            color: #7f8c8d;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        h4 {
+            color: #95a5a6;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+
+        .date {
+            color: #95a5a6;
+            font-style: italic;
+            margin-bottom: 30px;
+        }
+
+        .abstract {
+            background-color: #ecf0f1;
+            padding: 20px;
+            border-left: 4px solid #3498db;
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 2px 3px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #3498db;
+            color: white;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .status-pass {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .status-fail {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        .status-warn {
+            color: #f39c12;
+            font-weight: bold;
+        }
+
+        .status-incomplete {
+            color: #95a5a6;
+            font-weight: bold;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .badge-pass {
+            background-color: #27ae60;
+            color: white;
+        }
+
+        .badge-fail {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .badge-warn {
+            background-color: #f39c12;
+            color: white;
+        }
+
+        .badge-incomplete {
+            background-color: #95a5a6;
+            color: white;
+        }
+
+        .figure {
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        .figure img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .figure-caption {
+            margin-top: 10px;
+            font-style: italic;
+            color: #7f8c8d;
+        }
+
+        .toc {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+        }
+
+        .toc h2 {
+            margin-top: 0;
+            font-size: 1.5em;
+            border: none;
+        }
+
+        .toc ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        .toc li {
+            margin: 8px 0;
+        }
+
+        .toc a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        ul, ol {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+
+        li {
+            margin: 8px 0;
+        }
+
+        .alert {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            border-left: 4px solid;
+        }
+
+        .alert-info {
+            background-color: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+
+        .alert-warning {
+            background-color: #fff3cd;
+            border-color: #f39c12;
+            color: #856404;
+        }
+
+        .alert-danger {
+            background-color: #f8d7da;
+            border-color: #e74c3c;
+            color: #721c24;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            border-color: #27ae60;
+            color: #155724;
+        }
+
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+
+        pre code {
+            background-color: transparent;
+            color: #ecf0f1;
+            padding: 0;
+        }
+
+        .summary-box {
+            background-color: #ecf0f1;
+            padding: 20px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+
+        .recommendation {
+            background-color: #e8f4f8;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #3498db;
+        }
+
+        .formula {
+            background-color: #f9f9f9;
+            padding: 15px;
+            margin: 15px 0;
+            border: 1px solid #ddd;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid #ecf0f1;
+            margin: 30px 0;
+        }
+
+        @media print {
+            body {
+                background-color: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Femwell MCP Validation Report</h1>
+        <div class="subtitle">Benchmarking Against Tidy3D Reference Simulations</div>
+        <div class="date">Date: October 24, 2025</div>
+
+        <div class="abstract">
+            <strong>Abstract:</strong> This report presents validation results for the Femwell Model Connectivity Protocol (MCP) tools against Tidy3D reference simulations. We benchmark three key photonic devices: (1) TiN metal heater phase shifter, (2) doped silicon heater phase shifter, and (3) PN junction depletion modulator. The validation focuses on comparing phase shift characteristics, modulation efficiency, and effective index modulation against established Tidy3D notebooks.
+        </div>
+
+        <div class="toc">
+            <h2>Table of Contents</h2>
+            <ul>
+                <li><a href="#introduction">1. Introduction</a></li>
+                <li><a href="#benchmark1">2. Benchmark #1: TiN Metal Heater Phase Shifter</a></li>
+                <li><a href="#benchmark2">3. Benchmark #2: Doped Silicon Heater Phase Shifter</a></li>
+                <li><a href="#benchmark3">4. Benchmark #3: Waveguide Dispersion</a></li>
+                <li><a href="#benchmark4">5. Benchmark #4: PN Junction Depletion Modulator</a></li>
+                <li><a href="#summary">6. Summary and Recommendations</a></li>
+                <li><a href="#appendix">7. Appendix: Formulas and Definitions</a></li>
+            </ul>
+        </div>
+
+        <hr>
+
+        <h2 id="introduction">1. Introduction</h2>
+
+        <h3>1.1 Motivation</h3>
+        <p>The Femwell MCP server provides computational tools for simulating photonic devices using finite element methods. To ensure accuracy and reliability, we validate these tools against Tidy3D, a well-established FDTD-based photonic simulation platform with comprehensive validation against experimental data.</p>
+
+        <h3>1.2 Benchmarking Methodology</h3>
+        <p>For each device, we:</p>
+        <ol>
+            <li>Extract reference data from Tidy3D Jupyter notebooks</li>
+            <li>Configure Femwell MCP tools with matching geometric and material parameters</li>
+            <li>Compare key performance metrics (phase shift, effective index, modulation efficiency)</li>
+            <li>Assess agreement within defined tolerance criteria (typically ±15% for phase shifters)</li>
+        </ol>
+
+        <h3>1.3 Validation Criteria</h3>
+        <ul>
+            <li><span class="status-pass">✅ PASS</span>: Key metric error &lt; 15%</li>
+            <li><span class="status-warn">⚠️ WARN</span>: Key metric error 15-30%</li>
+            <li><span class="status-fail">❌ FAIL</span>: Key metric error &gt; 30%</li>
+        </ul>
+
+        <hr>
+
+        <h2 id="benchmark1">2. Benchmark #1: TiN Metal Heater Phase Shifter</h2>
+
+        <h3>2.1 Overview</h3>
+        <p>The TiN metal heater phase shifter uses resistive heating to induce thermal modulation of the waveguide effective index. Both Femwell and Tidy3D implementations are based on Jacques et al., <em>Opt. Express</em> 27, 10456 (2019).</p>
+
+        <h3>2.2 Device Configuration</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Value</th>
+                    <th>Unit</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Waveguide width</strong></td>
+                    <td>0.5</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Waveguide height</strong></td>
+                    <td>0.22</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Heater width</strong></td>
+                    <td>2.0</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Heater thickness</strong></td>
+                    <td>0.14</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Heater offset</strong></td>
+                    <td>2.0</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Phase shifter length</strong></td>
+                    <td>320</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Wavelength</strong></td>
+                    <td>1.55</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Material</strong></td>
+                    <td colspan="2">Si core, TiN heater, SiO₂ cladding</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>2.3 Reference Data</h3>
+        <p>Reference phase shift data extracted from Tidy3D <code>TransientThermoOpticShifter.ipynb</code>:</p>
+        <ul>
+            <li>Power range: 0 – 30 mW (5 points)</li>
+            <li>P<sub>π</sub> (Tidy3D): 23.9 mW</li>
+            <li>Linear phase-power relationship</li>
+        </ul>
+
+        <h3>2.4 Results</h3>
+        <div class="figure">
+            <img src="results/benchmark1_comparison.png" alt="Benchmark 1 Comparison">
+            <div class="figure-caption">Figure 1: TiN metal heater phase shifter comparison between Tidy3D reference and Femwell MCP results.</div>
+        </div>
+
+        <h3>2.5 Performance Metrics</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th>Tidy3D</th>
+                    <th>Femwell</th>
+                    <th>Error</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>P<sub>π</sub> (mW)</strong></td>
+                    <td>23.90</td>
+                    <td>0.00</td>
+                    <td><span class="status-fail">-100%</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Mean Absolute Error</strong></td>
+                    <td>--</td>
+                    <td>10.48 rad</td>
+                    <td><span class="status-fail">FAIL</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Max Absolute Error</strong></td>
+                    <td>--</td>
+                    <td>14.58 rad</td>
+                    <td><span class="status-fail">FAIL</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Mean Relative Error</strong></td>
+                    <td>--</td>
+                    <td>722%</td>
+                    <td><span class="status-fail">FAIL</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-danger">
+            <strong>Status: <span class="badge badge-fail">❌ FAIL</span></strong>
+            <p><strong>Issue:</strong> Femwell phase shift values are constant at 15.57 rad for all non-zero power levels, indicating a computational or configuration error. The tool does not correctly capture the linear phase-power relationship.</p>
+            <p><strong>Root Cause Analysis:</strong></p>
+            <ul>
+                <li>Phase shifts stuck at constant value (15.57 rad) for P &gt; 0</li>
+                <li>Power calculation issue: tool returns power per unit length, needs multiplication by device length</li>
+                <li>Thermal-optical coupling may not be properly integrated</li>
+            </ul>
+        </div>
+
+        <hr>
+
+        <h2 id="benchmark2">3. Benchmark #2: Doped Silicon Heater Phase Shifter</h2>
+
+        <h3>3.1 Overview</h3>
+        <p>The doped silicon heater phase shifter uses N++ doped silicon regions as resistive heaters in a rib waveguide configuration. This design offers better thermal coupling compared to metal heaters.</p>
+
+        <h3>3.2 Device Configuration</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Value</th>
+                    <th>Unit</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Core width</strong></td>
+                    <td>0.5</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Core height</strong></td>
+                    <td>0.22</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Slab height</strong></td>
+                    <td>0.09</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Slab width (each side)</strong></td>
+                    <td>0.8</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Heater width</strong></td>
+                    <td>1.0</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Phase shifter length</strong></td>
+                    <td>320</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Wavelength</strong></td>
+                    <td>1.55</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Material</strong></td>
+                    <td colspan="2">Si rib waveguide, N++ Si heaters</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>3.3 Reference Data</h3>
+        <p>Reference phase shift data extracted from Tidy3D <code>TransientThermoOpticShifter.ipynb</code> (rib variant):</p>
+        <ul>
+            <li>Power range: 0 – 30 mW (5 points)</li>
+            <li>P<sub>π</sub> (Tidy3D): 25.2 mW</li>
+            <li>Linear phase-power relationship</li>
+        </ul>
+
+        <h3>3.4 Results</h3>
+        <div class="figure">
+            <img src="results/benchmark2_comparison.png" alt="Benchmark 2 Comparison">
+            <div class="figure-caption">Figure 2: Doped silicon heater phase shifter comparison between Tidy3D reference and Femwell MCP results.</div>
+        </div>
+
+        <h3>3.5 Performance Metrics</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th>Tidy3D</th>
+                    <th>Femwell</th>
+                    <th>Error</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>P<sub>π</sub> (mW)</strong></td>
+                    <td>25.20</td>
+                    <td>24.40</td>
+                    <td><span class="status-pass">-3.18%</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Mean Absolute Error</strong></td>
+                    <td>--</td>
+                    <td>0.062 rad</td>
+                    <td><span class="status-pass">PASS</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Max Absolute Error</strong></td>
+                    <td>--</td>
+                    <td>0.104 rad</td>
+                    <td><span class="status-pass">PASS</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Mean Relative Error</strong></td>
+                    <td>--</td>
+                    <td>2.85%</td>
+                    <td><span class="status-pass">PASS</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-success">
+            <strong>Status: <span class="badge badge-pass">✅ PASS</span></strong>
+            <p><strong>Excellent agreement.</strong> Femwell MCP tool successfully predicts P<sub>π</sub> within 3.2% of Tidy3D reference. Phase shift linearity and magnitude show excellent correspondence. This validates the doped silicon heater implementation for thermo-optic phase shifter design.</p>
+        </div>
+
+        <hr>
+
+        <h2 id="benchmark3">4. Benchmark #3: Waveguide Dispersion</h2>
+
+        <h3>4.1 Overview</h3>
+        <p>Waveguide dispersion characterization validates the mode solver's ability to compute effective index (n<sub>eff</sub>) and group index (n<sub>g</sub>) as a function of wavelength. This is fundamental to all other device simulations.</p>
+
+        <h3>4.2 Device Configuration</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Value</th>
+                    <th>Unit</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Waveguide width</strong></td>
+                    <td>0.5</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Waveguide height</strong></td>
+                    <td>0.22</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Wavelength range</strong></td>
+                    <td>1.27 – 1.31</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Material</strong></td>
+                    <td colspan="2">Si core, SiO₂ cladding</td>
+                </tr>
+                <tr>
+                    <td><strong>Number of points</strong></td>
+                    <td>11</td>
+                    <td>--</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>4.3 Results</h3>
+        <div class="figure">
+            <img src="results/benchmark3_comparison.png" alt="Benchmark 3 Comparison">
+            <div class="figure-caption">Figure 3: Waveguide dispersion comparison between Tidy3D reference and Femwell MCP results.</div>
+        </div>
+
+        <h3>4.4 Performance Metrics</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Mean n<sub>eff</sub> error</strong></td>
+                    <td><span class="status-pass">&lt; 0.1%</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Mean n<sub>g</sub> error</strong></td>
+                    <td><span class="status-pass">&lt; 1%</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Status</strong></td>
+                    <td><span class="status-pass">✅ PASS</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-success">
+            <strong>Status: <span class="badge badge-pass">✅ PASS</span></strong>
+            <p>Effective index and group index show excellent agreement across the wavelength range. Mean relative error &lt; 1% validates the Femwell mode solver for waveguide dispersion calculations.</p>
+        </div>
+
+        <hr>
+
+        <h2 id="benchmark4">5. Benchmark #4: PN Junction Depletion Modulator</h2>
+
+        <h3>5.1 Overview</h3>
+        <p>The PN junction depletion modulator uses carrier depletion/injection to modulate the waveguide effective index. This device is critical for high-speed optical modulators.</p>
+
+        <h3>5.2 Device Configuration</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Value</th>
+                    <th>Unit</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Waveguide width</strong></td>
+                    <td>0.5</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Waveguide thickness</strong></td>
+                    <td>0.22</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Slab thickness</strong></td>
+                    <td>0.1</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Wavelength</strong></td>
+                    <td>2.0</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Doping (N<sub>A</sub> = N<sub>D</sub>)</strong></td>
+                    <td>10<sup>18</sup></td>
+                    <td>cm<sup>-3</sup></td>
+                </tr>
+                <tr>
+                    <td><strong>PN junction position</strong></td>
+                    <td>0.0</td>
+                    <td>μm</td>
+                </tr>
+                <tr>
+                    <td><strong>Voltage range</strong></td>
+                    <td>0 – 1.2</td>
+                    <td>V</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-warning">
+            <strong>⚠️ Note:</strong> Reference data from Tidy3D <code>MachZehnderModulator.ipynb</code> is currently <strong>PLACEHOLDER</strong> data. Actual n<sub>eff</sub> vs voltage values need to be extracted from notebook execution (cell 76).
+        </div>
+
+        <h3>5.3 Results</h3>
+        <div class="figure">
+            <img src="../mcp_output/depletion_modulator_comparison.png" alt="Benchmark 4 Comparison">
+            <div class="figure-caption">Figure 4: PN junction depletion modulator comparison. <span class="status-warn">WARNING: Tidy3D data is placeholder, not actual notebook output.</span></div>
+        </div>
+
+        <h3>5.4 Femwell Results</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Parameter</th>
+                    <th>0V</th>
+                    <th>1.0V</th>
+                    <th>Change</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Real(n<sub>eff</sub>)</strong></td>
+                    <td>2.248858</td>
+                    <td>2.248685</td>
+                    <td>-0.000174</td>
+                </tr>
+                <tr>
+                    <td><strong>Imag(n<sub>eff</sub>) × 10<sup>4</sup></strong></td>
+                    <td>1.48</td>
+                    <td>1.61</td>
+                    <td>+0.13</td>
+                </tr>
+                <tr>
+                    <td><strong>Absorption (dB/cm)</strong></td>
+                    <td>40.46</td>
+                    <td>44.03</td>
+                    <td>+3.57</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>5.5 Key Observations</h3>
+        <ol>
+            <li><strong>Small modulation:</strong> Δn<sub>eff</sub> = -1.74 × 10<sup>-4</sup> at 1.0V is 100× smaller than expected carrier injection values</li>
+            <li><strong>Numerical instability:</strong> Sudden jump in n<sub>eff</sub> and absorption drop at 1.1-1.2V suggests convergence issues</li>
+            <li><strong>Physics mismatch:</strong> Femwell shows depletion behavior (decreasing n<sub>eff</sub>), while Tidy3D notebook expects carrier injection (increasing n<sub>eff</sub>)</li>
+        </ol>
+
+        <div class="alert alert-warning">
+            <strong>Status: <span class="badge badge-incomplete">⚠️ INCOMPLETE</span></strong>
+            <p>Cannot fully validate without actual Tidy3D reference data. Preliminary results suggest:</p>
+            <ul>
+                <li>Femwell tool runs successfully but shows unexpected physics</li>
+                <li>Need actual n<sub>eff</sub> values from Tidy3D notebook for quantitative comparison</li>
+                <li>Possible physics model mismatch (depletion vs injection)</li>
+            </ul>
+        </div>
+
+        <hr>
+
+        <h2 id="summary">6. Summary and Recommendations</h2>
+
+        <h3>6.1 Validation Summary</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Benchmark</th>
+                    <th>Device</th>
+                    <th>Status</th>
+                    <th>Key Metric Error</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>#1</strong></td>
+                    <td>TiN Metal Heater</td>
+                    <td><span class="badge badge-fail">❌ FAIL</span></td>
+                    <td>P<sub>π</sub> error: -100%</td>
+                </tr>
+                <tr>
+                    <td><strong>#2</strong></td>
+                    <td>Doped Si Heater</td>
+                    <td><span class="badge badge-pass">✅ PASS</span></td>
+                    <td>P<sub>π</sub> error: -3.2%</td>
+                </tr>
+                <tr>
+                    <td><strong>#3</strong></td>
+                    <td>Waveguide Dispersion</td>
+                    <td><span class="badge badge-pass">✅ PASS</span></td>
+                    <td>n<sub>eff</sub> error: &lt;1%</td>
+                </tr>
+                <tr>
+                    <td><strong>#4</strong></td>
+                    <td>Depletion Modulator</td>
+                    <td><span class="badge badge-incomplete">⚠️ INCOMPLETE</span></td>
+                    <td>Awaiting reference data</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="summary-box">
+            <h4>Key Findings</h4>
+            <ul>
+                <li><span class="status-pass">✅ Success:</span> Doped silicon heater and waveguide dispersion tools show excellent agreement with Tidy3D</li>
+                <li><span class="status-fail">❌ Issue:</span> TiN metal heater tool has a critical bug preventing correct phase shift calculation</li>
+                <li><span class="status-warn">⚠️ Pending:</span> Depletion modulator needs actual Tidy3D reference data for validation</li>
+            </ul>
+        </div>
+
+        <h3>6.2 Recommendations</h3>
+
+        <div class="recommendation">
+            <h4>Priority 1: Debug TiN Metal Heater Phase Shifter Tool</h4>
+            <ul>
+                <li>Investigate why phase shifts are constant (15.57 rad) for non-zero power</li>
+                <li>Check power calculation: verify total power vs power per unit length</li>
+                <li>Review thermal-optical coupling implementation</li>
+            </ul>
+        </div>
+
+        <div class="recommendation">
+            <h4>Priority 2: Extract Actual Tidy3D Reference Data for Depletion Modulator</h4>
+            <ul>
+                <li>Run <code>MachZehnderModulator.ipynb</code> through cell 76</li>
+                <li>Extract <code>n_eff_freq0</code> array values (real and imaginary parts)</li>
+                <li>Replace placeholder data in benchmark comparison</li>
+            </ul>
+        </div>
+
+        <div class="recommendation">
+            <h4>Priority 3: Investigate Depletion Modulator Physics Model</h4>
+            <ul>
+                <li>Verify forward vs reverse bias configuration</li>
+                <li>Check if Tidy3D uses carrier injection (forward) vs Femwell depletion (reverse)</li>
+                <li>Align voltage polarity and physics assumptions</li>
+            </ul>
+        </div>
+
+        <div class="recommendation">
+            <h4>Priority 4: Extend Validation to Additional Devices</h4>
+            <ul>
+                <li>Ring resonators</li>
+                <li>Mach-Zehnder interferometers</li>
+                <li>Directional couplers</li>
+            </ul>
+        </div>
+
+        <h3>6.3 Validation Confidence</h3>
+        <p>Based on 2 out of 3 completed benchmarks passing:</p>
+        <ul>
+            <li><strong>High confidence:</strong> Waveguide dispersion, thermo-optic phase shifters (doped Si)</li>
+            <li><strong>Low confidence:</strong> Thermo-optic phase shifters (metal heater)</li>
+            <li><strong>Unknown:</strong> Electro-optic modulators (depletion/injection)</li>
+        </ul>
+
+        <hr>
+
+        <h2>Conclusion</h2>
+
+        <p>The Femwell MCP validation campaign demonstrates strong performance for waveguide dispersion and doped silicon heater phase shifters, with errors well within acceptable tolerances (&lt;5%). However, the TiN metal heater implementation requires immediate attention to resolve computational issues preventing accurate phase shift predictions.</p>
+
+        <p>The depletion modulator benchmark remains incomplete pending actual Tidy3D reference data extraction. Preliminary results suggest potential physics model mismatches that require careful investigation.</p>
+
+        <p>Overall, Femwell MCP shows promise as a rapid prototyping tool for photonic device simulation, with the caveat that each tool should be individually validated before use in production workflows.</p>
+
+        <hr>
+
+        <h2 id="appendix">7. Appendix: Formulas and Definitions</h2>
+
+        <h3>7.1 Phase Shift Calculation</h3>
+        <p>Phase shift due to effective index change:</p>
+        <div class="formula">
+            Δφ = (2π/λ) × Δn<sub>eff</sub> × L
+        </div>
+        <p>where λ is wavelength, Δn<sub>eff</sub> is effective index change, and L is device length.</p>
+
+        <h3>7.2 Power for π Phase Shift</h3>
+        <p>The power required to achieve π radians phase shift (P<sub>π</sub>) is a key figure of merit:</p>
+        <div class="formula">
+            P<sub>π</sub> = power at Δφ = π
+        </div>
+
+        <h3>7.3 Absorption Coefficient</h3>
+        <p>Conversion from imaginary part of n<sub>eff</sub> to absorption:</p>
+        <div class="formula">
+            α [dB/cm] = (4π / λ ln(10)) × Im(n<sub>eff</sub>) × 10<sup>4</sup>
+        </div>
+
+        <h3>7.4 Thermal-Optic Coefficient</h3>
+        <p>Temperature-induced index change:</p>
+        <div class="formula">
+            Δn = (dn/dT) × ΔT
+        </div>
+        <p>For silicon at 1.55 μm: dn/dT = 1.86 × 10<sup>-4</sup> K<sup>-1</sup></p>
+
+        <hr>
+
+        <h2>Data Files</h2>
+        <p>All benchmark data files are available in the repository:</p>
+        <ul>
+            <li><code>Benchmark/results/benchmark1_comparison.png</code></li>
+            <li><code>Benchmark/results/benchmark1_report.md</code></li>
+            <li><code>Benchmark/results/benchmark2_comparison.png</code></li>
+            <li><code>Benchmark/results/benchmark2_report.md</code></li>
+            <li><code>Benchmark/results/benchmark3_comparison.png</code></li>
+            <li><code>Benchmark/results/benchmark3_report.md</code></li>
+            <li><code>mcp_output/mzi_depletion_modulator_results.csv</code></li>
+            <li><code>mcp_output/depletion_modulator_comparison.png</code></li>
+        </ul>
+
+        <hr>
+
+        <div style="text-align: center; margin-top: 40px; padding: 20px; background-color: #ecf0f1; border-radius: 4px;">
+            <p><strong>Report Generated:</strong> October 24, 2025</p>
+            <p><strong>Validation Status:</strong> 2/3 benchmarks passed, 1 failed, 1 incomplete</p>
+            <p><strong>Axiomatic MCP Project</strong></p>
+        </div>
+    </div>
+</body>
+</html>

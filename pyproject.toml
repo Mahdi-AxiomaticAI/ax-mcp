@@ -46,6 +46,7 @@ axiomatic-documents = "axiomatic_mcp.servers.documents:main"
 axiomatic-plots = "axiomatic_mcp.servers.plots:main"
 axiomatic-dts = "axiomatic_mcp.servers.dts:main"
 axiomatic-tidy3d = "axiomatic_mcp.servers.tidy3d:main"
+axiomatic-femwell = "axiomatic_mcp.servers.femwell:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
